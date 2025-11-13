@@ -1,0 +1,97 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myns
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-hsvc
+  namespace: myns
+  labels:
+    app: minio
+spec:
+  clusterIP: None
+  selector:
+    app: minio
+  ports:
+    - port: 9000
+      name: data
+    - port: 9001
+      name: console
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-svc
+  namespace: myns
+  labels:
+    app: minio
+spec:
+  type: ClusterIP
+  selector:
+    app: minio
+  ports:
+    - name: data
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: myns
+spec:
+  serviceName: minio-hsvc
+  replicas: 3
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio
+          args:
+            - server
+            - --console-address=:9001
+            - --address=:9000
+            - http://minio-{0...2}.minio-hsvc.myns.svc.cluster.local/data
+          ports:
+            - containerPort: 9000
+              name: data
+            - containerPort: 9001
+              name: console
+          env:
+            - name: MINIO_ROOT_USER
+              value: "minioadmin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "minioadmin123"
+          # volumeMounts:
+          #   - name: data-vol
+          #     mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: data-vol
+  #     spec:
+  #       accessModes: ["ReadWriteOnce"]
+  #       resources:
+  #         requests:
+  #           storage: 1Gi
+  #       storageClassName: do-block-storage

@@ -1,0 +1,65 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bggns
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bggdb-pvc
+  namespace: bggns
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: do-block-storage
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bggdb-deploy
+  namespace: bggns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bggdb
+  template:
+    metadata:
+      labels:
+        app: bggdb
+    spec:
+      containers:
+      - name: bggdb-container
+        image: chukmunnlee/bgg-database:nov-2025
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            value: mydbpassword
+        ports:
+          - containerPort: 3306
+        volumeMounts:
+          - name: data-vol
+            mountPath: /var/lib/mysql
+      volumes:
+        - name: data-vol
+          persistentVolumeClaim:
+            claimName: bggdb-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bggdb-svc
+  namespace: bggns
+spec:
+  selector:
+    app: bggdb
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP

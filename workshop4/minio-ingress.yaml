@@ -1,0 +1,59 @@
+## combine the network
+# ---
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: minio-ing
+#   namespace: myns
+#   annotations:
+#     nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#     - host: minio-163.47.9.246.sslip.io   # replace with your IP
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: minio-svc
+#                 port:
+#                   number: 9001
+
+##splitting the network
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-ing
+  namespace: myns
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    # Route for the MinIO Console
+    - host: console-minio-163.47.9.246.sslip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio-svc
+                port:
+                  number: 9001
+
+    # Route for the MinIO data (API)
+    - host: data-minio-163.47.9.246.sslip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio-svc
+                port:
+                  number: 9000
+
